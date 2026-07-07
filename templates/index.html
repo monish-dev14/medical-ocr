@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Frontend Head Metadata & Configuration -->
+    <meta charset="UTF-8">
+    <title>Batch Processing Medical OCR Suite</title>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background: #f4f6f9; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1, h2, h3 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        .panel { background: #fafafa; padding: 20px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 25px; }
+        label { font-weight: bold; color: #34495e; display: block; margin-bottom: 6px; }
+        input[type="file"] { width: 100%; padding: 10px; margin-top: 4px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; box-sizing: border-box; }
+        button { background: #3498db; color: white; border: none; padding: 12px 20px; font-size: 15px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s; width: 100%; }
+        button:hover { background: #2980b9; }
+        .execute-btn { background: #2ecc71; font-size: 16px; margin-top: 15px; }
+        .execute-btn:hover { background: #27ae60; }
+        .delete-btn { background: #e74c3c; color: white; border: none; padding: 6px 12px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; width: auto; }
+        .delete-btn:hover { background: #c0392b; }
+        
+        /* Interactive grid layout rules for checklist items */
+        .select-all-box { background: #e2e8f0; padding: 12px; border-radius: 4px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .select-all-box input { transform: scale(1.3); cursor: pointer; }
+        .keys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 25px; max-height: 280px; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .key-item { display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 4px; cursor: pointer; user-select: none; margin-bottom: 0; }
+        .key-item:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .key-item input { transform: scale(1.2); cursor: pointer; margin: 0; }
+        
+        /* Table styles for output matrix & history log grid structures */
+        .answer-table, .history-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; }
+        .answer-table th, .answer-table td, .history-table th, .history-table td { border: 1px solid #cbd5e1; padding: 12px; text-align: left; vertical-align: top; }
+        .answer-table th { background: #34495e; color: white; font-weight: bold; }
+        .history-table th { background: #f1f5f9; font-weight: bold; }
+        .upload-card-wrapper { background: #fff; padding: 20px; border: 2px dashed #3498db; border-radius: 6px; margin-top: 15px; }
+        .bulk-file-badge { background: #e2e8f0; color: #34495e; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; font-family: monospace; display: inline-block; margin-bottom: 4px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
+
+    <!-- Automated Client-Side JavaScript Selection Utilities -->
+    <script>
+        function toggleSelectAll(master) {
+            const checkboxes = document.getElementsByClassName('key-checkbox');
+            for (let i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].checked = master.checked;
+            }
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏥 Zero-Entry Auto-Discovery Medical OCR</h1>
+
+    <!-- Module 1: Phase 1 Batch Form Discovery Input Card -->
+    <div class="panel">
+        <h3>🔍 Upload 1: Discover Document Key Structure</h3>
+        <p style="font-size: 14px; color: #7f8c8d; margin-top: -5px;">Upload one or more blank form formats to extract structural header keys (Hold Ctrl / Shift to pick multiple).</p>
+        <form action="/discover-keys" method="POST" enctype="multipart/form-data">
+            <input type="file" name="image_files" accept="image/*" multiple required>
+            <button type="submit">⚡ Step 1: Scan Layouts & Extract Form Labels</button>
+        </form>
+    </div>
+
+    <!-- Module 2: Phase 2 Runtime Checklist Container -->
+    {% if discovered_keys is not none %}
+    <div class="panel" style="border-left: 5px solid #3498db; background: #f0f7ff;">
+        <h3>🎛️ Check Fields & Upload Patient Values Form</h3>
+        <p style="font-size: 14px; color: #5a738e;">We aggregated <strong>{{ discovered_keys|length }} unique structural areas</strong> across the template layouts. Select fields to extract.</p>
+        
+        <form action="/extract-targeted-values" method="POST" enctype="multipart/form-data">
+            
+            <div class="select-all-box">
+                <input type="checkbox" id="master_toggle" onclick="toggleSelectAll(this)">
+                <label for="master_toggle" style="margin:0; cursor:pointer;">Select All Discovered Keys ({{ discovered_keys|length }} fields)</label>
+            </div>
+
+            <div class="keys-grid">
+                {% for key in discovered_keys %}
+                <label class="key-item">
+                    <input type="checkbox" name="selected_keys" value="{{ key }}" class="key-checkbox">
+                    <span>{{ key }}</span>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="upload-card-wrapper">
+                <label style="color: #2980b9; font-size: 15px;">📥 Upload 2: Select Filled Patient Form Document Files (Hold Ctrl / Shift to pick multiple):</label>
+                <input type="file" name="value_images" accept="image/*" multiple required>
+            </div>
+
+            <button type="submit" class="execute-btn">🚀 Step 2: Compare & Generate Final Matrix Answers</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Module 3: Consolidated Clean Batch Comparison Result Table -->
+    {% if bulk_results is not none %}
+    <div class="panel" style="border-left: 5px solid #2ecc71;">
+        <h2>📦 Current Clinical Comparison Results ({{ bulk_results|length }} Files Consolidated)</h2>
+        
+        <table class="answer-table">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Source Filename Target</th>
+                    <th style="width: 35%;">Target Key Checked</th>
+                    <th style="width: 35%;">Identified Value Data Response</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Renders ONLY verified keys with contents for each distinct picture -->
+                {% for filename, file_data in bulk_results.items() %}
+                    {% for key, value in file_data.items() %}
+                    <tr>
+                        <td><span class="bulk-file-badge" title="{{ filename }}">📄 {{ filename }}</span></td>
+                        <td><strong>{{ key }}</strong></td>
+                        <td style="background: #fff; font-size: 15px; color: #27ae60; font-weight: bold;">{{ value }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Module 4: Consolidated Database Log History Grid Display -->
+    <h2>📋 Local Computer SQLite Database Log History</h2>
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th style="width: 8%;">ID Column</th>
+                <th style="width: 22%;">Uploaded Filename Targets</th>
+                <th style="width: 35%;">Mapped Key Value Pairs Output Log</th>
+                <th style="width: 25%;">JSON Output Log</th>
+                <th style="width: 10%;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in history_records %}
+            <tr>
+                <td><strong>#{{ record.id }}</strong></td>
+                <td style="font-size: 13px; word-break: break-all; color: #34495e;">{{ record.filename }}</td>
+                <td>
+                    {% for filename, file_data in record.data.items() %}
+                        <div style="margin-bottom: 8px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px;">
+                            <span class="bulk-file-badge" title="{{ filename }}">📄 {{ filename }}</span><br>
+                            {% for k, v in file_data.items() %}
+                                <span style="display:inline-block; background:#e2e8f0; padding:3px 6px; margin:2px; border-radius:4px; font-size:11px;">
+                                    <strong>{{ k }}:</strong> {{ v }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </td>
+                <td>
+                    <pre style="background: #2c3e50; color: #2ecc71; padding: 10px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 12px; margin: 0; white-space: pre-wrap; word-break: break-all; max-height: 180px; overflow-y: auto; line-height: 1.4; text-align: left;">{{ record.raw_json }}</pre>
+                </td>
+                <td>
+                    <form action="/delete-record/{{ record.id }}" method="POST" style="margin:0; padding:0;">
+                        <button type="submit" class="delete-btn" onclick="return confirm('Permanently delete record entry log?')">🗑️ Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>

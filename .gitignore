@@ -1,0 +1,3 @@
+.env
+ocr_records.db
+__pycache__/
